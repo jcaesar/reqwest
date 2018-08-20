@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
 use std::io::{self, Cursor, Read};
@@ -130,6 +131,7 @@ pub struct Part {
     value: Body,
     mime: Option<Mime>,
     file_name: Option<Cow<'static, str>>,
+    hdr: HashMap<Cow<'static, str>, Cow<'static, str>>,
 }
 
 impl Part {
@@ -184,6 +186,7 @@ impl Part {
             value: value,
             mime: None,
             file_name: None,
+            hdr: HashMap::new()
         }
     }
 
@@ -198,6 +201,16 @@ impl Part {
         self.file_name = Some(filename.into());
         self
     }
+
+    /// Returns a reference to the hash map with additional header fields
+    pub fn header_fields(&self) -> &HashMap<Cow<'static, str>, Cow<'static, str>> {
+        &self.hdr
+    }
+
+    /// Returns a reference to the hash map with additional header fields
+    pub fn header_fields_mut(&mut self) -> &mut HashMap<Cow<'static, str>, Cow<'static, str>> {
+        &mut self.hdr
+    }
 }
 
 impl fmt::Debug for Part {
@@ -206,6 +219,7 @@ impl fmt::Debug for Part {
             .field("value", &self.value)
             .field("mime", &self.mime)
             .field("file_name", &self.file_name)
+            .field("hdr", &self.hdr)
             .finish()
     }
 }
@@ -306,7 +320,7 @@ impl Read for Reader {
 
 fn header(name: &str, field: &Part) -> String {
     format!(
-        "Content-Disposition: form-data; {}{}{}",
+        "Content-Disposition: form-data; {}{}{}{}",
         format_parameter("name", name),
         match field.file_name {
             Some(ref file_name) => format!("; {}", format_parameter("filename", file_name)),
@@ -315,7 +329,12 @@ fn header(name: &str, field: &Part) -> String {
         match field.mime {
             Some(ref mime) => format!("\r\nContent-Type: {}", mime),
             None => "".to_string(),
-        }
+        },
+        field.hdr.iter().fold(
+            "".to_string(), 
+            |hdrs, (k,v)| 
+                format!("{}\r\n{}: {}", hdrs, k, v)
+        )
     )
 }
 
