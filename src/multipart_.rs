@@ -8,6 +8,10 @@ use mime::Mime;
 use mime_guess;
 use url::percent_encoding;
 use uuid::Uuid;
+use http;
+
+/// An alias to http::HeaderMap so http is unneded as an explicit dependency
+pub type HeaderMap = http::HeaderMap<String>;
 
 use {Body};
 
@@ -130,6 +134,7 @@ pub struct Part {
     value: Body,
     mime: Option<Mime>,
     file_name: Option<Cow<'static, str>>,
+    hdr: HeaderMap,
 }
 
 impl Part {
@@ -184,6 +189,7 @@ impl Part {
             value: value,
             mime: None,
             file_name: None,
+            hdr: HeaderMap::default()
         }
     }
 
@@ -198,6 +204,21 @@ impl Part {
         self.file_name = Some(filename.into());
         self
     }
+
+    /// Returns a reference to the map of additional header fields
+    pub fn header_fields(&self) -> &HeaderMap {
+        &self.hdr
+    }
+
+    /// Returns a mutable reference to the map of additional header fields
+    pub fn header_fields_mut(&mut self) -> &mut HeaderMap {
+        &mut self.hdr
+    }
+
+    /// Replaces the additional header fields
+    pub fn replace_header_fields(&mut self, hdr: HeaderMap) -> () {
+        self.hdr = hdr
+    }
 }
 
 impl fmt::Debug for Part {
@@ -206,6 +227,7 @@ impl fmt::Debug for Part {
             .field("value", &self.value)
             .field("mime", &self.mime)
             .field("file_name", &self.file_name)
+            .field("hdr", &self.hdr)
             .finish()
     }
 }
@@ -306,7 +328,7 @@ impl Read for Reader {
 
 fn header(name: &str, field: &Part) -> String {
     format!(
-        "Content-Disposition: form-data; {}{}{}",
+        "Content-Disposition: form-data; {}{}{}{}",
         format_parameter("name", name),
         match field.file_name {
             Some(ref file_name) => format!("; {}", format_parameter("filename", file_name)),
@@ -315,7 +337,12 @@ fn header(name: &str, field: &Part) -> String {
         match field.mime {
             Some(ref mime) => format!("\r\nContent-Type: {}", mime),
             None => "".to_string(),
-        }
+        },
+        field.hdr.iter().fold(
+            "".to_string(),
+            |hdrs, (k,v)|
+                format!("{}\r\n{}: {}", hdrs, k.as_str(), v)
+        )
     )
 }
 

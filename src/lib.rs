@@ -128,6 +128,7 @@ extern crate bytes;
 extern crate encoding_rs;
 #[macro_use]
 extern crate futures;
+extern crate http;
 extern crate hyper;
 extern crate hyper_tls;
 #[macro_use]

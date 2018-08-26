@@ -1,2 +1,2 @@
 //! # multipart/form-data
-pub use ::multipart_::{Form, Part};
+pub use ::multipart_::{Form, Part, HeaderMap};
