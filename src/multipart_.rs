@@ -8,10 +8,7 @@ use mime::Mime;
 use mime_guess;
 use url::percent_encoding;
 use uuid::Uuid;
-use http;
-
-/// An alias to http::HeaderMap so http is unneded as an explicit dependency
-pub type HeaderMap = http::HeaderMap<String>;
+use http::HeaderMap;
 
 use {Body};
 
@@ -206,17 +203,17 @@ impl Part {
     }
 
     /// Returns a reference to the map of additional header fields
-    pub fn header_fields(&self) -> &HeaderMap {
+    pub fn headers(&self) -> &HeaderMap {
         &self.hdr
     }
 
     /// Returns a mutable reference to the map of additional header fields
-    pub fn header_fields_mut(&mut self) -> &mut HeaderMap {
+    pub fn headers_mut(&mut self) -> &mut HeaderMap {
         &mut self.hdr
     }
 
     /// Replaces the additional header fields
-    pub fn replace_header_fields(&mut self, hdr: HeaderMap) -> () {
+    pub fn replace_headers(&mut self, hdr: HeaderMap) -> () {
         self.hdr = hdr
     }
 }
@@ -340,8 +337,7 @@ fn header(name: &str, field: &Part) -> String {
         },
         field.hdr.iter().fold(
             "".to_string(),
-            |hdrs, (k,v)|
-                format!("{}\r\n{}: {}", hdrs, k.as_str(), v)
+            |hdrs, (k,v)| hdrs + "\r\n" + k.as_str() + ": " + v.to_str().expect("Could decode HeaderValue to String (this is a bad unwrap)")
         )
     )
 }
